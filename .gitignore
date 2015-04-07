@@ -2,3 +2,4 @@
 venv/
 .idea/
 orders.csv
+*.egg-info/

@@ -1,3 +1,5 @@
+import argparse
+import textwrap
 import wx
 from wx.lib.pubsub import pub
 import os
@@ -7,16 +9,16 @@ import grequests
 import time
 import locale
 
-__user_agent__ = 'Set this to something...'
-__base_url__   = 'http://public-crest-sisi.testeveonline.com'
 
+_user_agent = None
+_base_url   = None
 
 def make_request(href, accept):
     """ Makes a request to CREST adding the required headers. """
 
     headers = {
         'Accept'     : accept,
-        'User-Agent' : __user_agent__,
+        'User-Agent' : _user_agent,
     }
 
     r = requests.get(href, headers=headers)
@@ -26,13 +28,13 @@ def make_request(href, accept):
     return r.json()
 
 
-def make_multiple_requests(hrefs, accept=None):
+def make_multiple_requests(hrefs, accept):
     """ Makes multiple async requests using grequests. """
 
     items   = []
     headers = {
         'Accept'     : accept,
-        'User-Agent' : __user_agent__
+        'User-Agent' : _user_agent
     }
 
     rs = (grequests.get(u, headers=headers) for u in hrefs)
@@ -113,7 +115,7 @@ class MarketView(wx.Frame):
 class MarketModel:
     def __init__(self):
         self.settings = {
-            'endPoints' : make_request(__base_url__, 'application/vnd.ccp.eve.Api-v3+json'),
+            'endPoints' : make_request(_base_url, 'application/vnd.ccp.eve.Api-v3+json'),
         }
 
         self.directory = os.getcwd()
@@ -305,7 +307,11 @@ class MarketController:
     def update_regions_controller(self):
         self.view.update_regions(self.model.regions)
 
-if __name__ == '__main__':
+
+def main():
     app = wx.App(False)
     controller = MarketController(app)     # Create an instance of the application class
     app.MainLoop()                         # Tell it to start processing events
+
+if __name__ == '__main__':
+    main()
