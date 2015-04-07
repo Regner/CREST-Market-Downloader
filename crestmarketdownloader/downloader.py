@@ -1,5 +1,3 @@
-import argparse
-import textwrap
 import wx
 from wx.lib.pubsub import pub
 import os
@@ -12,6 +10,8 @@ import locale
 
 _user_agent = None
 _base_url   = None
+_servers    = None
+
 
 def make_request(href, accept):
     """ Makes a request to CREST adding the required headers. """
@@ -56,35 +56,50 @@ class MarketView(wx.Frame):
         wx.Frame.__init__(self, parent, id, title)
         panel = wx.Panel(self, -1)
 
-        self.panel       = panel
-        self.regionCombo = wx.ComboBox(panel, -1, "", style=wx.CB_READONLY | wx.CB_SORT)
-        self.get_region  = wx.Button(panel, id=wx.ID_ANY, label='Dump Region')
-        self.save        = wx.Button(panel, id=wx.ID_ANY, label='Export Location')
-        self.filter      = wx.Button(panel, id=wx.ID_ANY, label='Filter File')
+        self.panel            = panel
+        self.region_combo     = wx.ComboBox(panel, -1, "", style=wx.CB_READONLY | wx.CB_SORT)
+        self.server_selection = wx.ComboBox(panel, -1, "", style=wx.CB_READONLY | wx.CB_SORT)
+        self.get_region       = wx.Button(panel, id=wx.ID_ANY, label='Dump Region')
+        self.save             = wx.Button(panel, id=wx.ID_ANY, label='Export Location')
+        self.filter           = wx.Button(panel, id=wx.ID_ANY, label='Filter File')
         self.get_region.Disable()
 
         self.status_bar=self.CreateStatusBar(style=0)
         self.status_bar.SetFieldsCount(2)
         self.status_bar.SetStatusWidths([-2, -1])
         self.SetStatusText("Please Log in", 0)
+
         sizer = wx.FlexGridSizer(2, 3, 5, 5)
-        sizer.Add(self.regionCombo)
+        sizer.Add(self.server_selection)
+        sizer.Add(self.region_combo)
         sizer.Add(self.get_region)
         sizer.Add(self.save)
         sizer.Add(self.filter)
+
+        self.update_server_list()
+
         border = wx.BoxSizer()
         border.Add(sizer, 0, wx.ALL, 15)
         panel.SetSizerAndFit(border)
+
         self.Fit()
         self.Centre()
+
+    def update_server_list(self):
+        """ Updates the list of selectable servers to work against. """
+
+        self.server_selection.Clear()
+
+        for server in _servers:
+            self.server_selection.Append(server, _servers[server])
 
     def update_status(self, data, extra1=0):
         self.SetStatusText(data, extra1)
         
     def update_regions(self, regions):
-        self.regionCombo.Clear()
+        self.region_combo.Clear()
         for item in regions['items']:
-            self.regionCombo.Append(item['name'], item)
+            self.region_combo.Append(item['name'], item)
     
     def show_dir(self):
         path = os.getcwd()
@@ -263,7 +278,7 @@ class MarketController:
     def __init__(self, app):
         self.view = MarketView(None, -1, "Market Loader")
 
-        self.view.regionCombo.Bind(wx.EVT_COMBOBOX, self.on_region_select)
+        self.view.region_combo.Bind(wx.EVT_COMBOBOX, self.on_region_select)
         self.view.save.Bind(wx.EVT_BUTTON, self.on_save_dir)
         self.view.filter.Bind(wx.EVT_BUTTON, self.on_filter_file)
 
@@ -280,7 +295,7 @@ class MarketController:
         self.model.load_base_data()
 
     def on_region_select(self, event):
-        selected = self.view.regionCombo.GetClientData(self.view.regionCombo.GetSelection())
+        selected = self.view.region_combo.GetClientData(self.view.region_combo.GetSelection())
         self.model.currentRegion = make_request(selected['href'], 'application/vnd.ccp.eve.Region-v1+json; charset=utf-8')
         self.view.get_region.Enable()
         self.view.SetStatusText("Ready.", 0)
@@ -297,12 +312,12 @@ class MarketController:
     # TODO: Figure out if this is actually used somewhere
     def get_region_controller(self, event):
         self.view.get_region.Disable()
-        self.view.regionCombo.Disable()
+        self.view.region_combo.Disable()
         self.model.get_region()
     
     def completed_dump(self, data):
         self.view.get_region.Enable()
-        self.view.regionCombo.Enable()
+        self.view.region_combo.Enable()
 
     def update_regions_controller(self):
         self.view.update_regions(self.model.regions)
